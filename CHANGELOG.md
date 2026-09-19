@@ -4,23 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-09-19
+
+### Highlights
+
+- Start installed copies of Pi Web Access much faster with a precompiled bundle.
+- Use standalone OpenAI search or reuse an existing Pi provider URL without duplicating gateway configuration.
+- Control which search providers and fetch modes are available.
+- Search Google through the new explicit Serply provider.
+- Get more reliable proxy handling, OpenCode requests, PDF answers, source checks, and stored-content retrieval.
+
 ### Added
 
-- Added opt-in `openaiUseProviderBaseUrl` to reuse the selected Pi provider's auth/model base URL for OpenAI search, completing missing endpoint paths and skipping invalid URL candidates without changing credential destinations. Explicit `openaiResponsesUrl` takes precedence; the switch works with Responses and standalone alpha search.
-
-- Added opt-in `openaiUseAlphaSearch` for the independent Codex `alpha/search` protocol, reusing configured OpenAI credentials and endpoint selection while preserving Responses search by default. Supports plaintext/source results (defaulting to five sources), recency and allowed-domain filters; unsupported excluded-domain filters and missing endpoints follow the configured provider fallback policy. Thanks to [@ZacharyQin](https://github.com/ZacharyQin) for [PR #420](https://github.com/nicobailon/pi-web-access/pull/420).
-
-- Added `fetch.defaultMode` and `fetch.allowedModes` configuration for choosing the default `fetch_content` mode and disabling unwanted modes. Thanks to [@Slooz](https://github.com/Slooz) for #395.
-- Added `webSearch.allowedProviders` to enforce one search-provider policy across web search, source checks, routing, aggregation, schemas, and Curator. Thanks [@Slooz](https://github.com/Slooz) for #396.
-- Added an explicit-only Serply Google Search provider with `serplyApiKey` / `SERPLY_API_KEY`, domain filtering, recency filtering, routing, and Curator support. Thanks to Serply vendor [@googio](https://github.com/googio) for PR #386.
+- Added opt-in `openaiUseProviderBaseUrl` to reuse a selected Pi provider's URL and credentials for OpenAI search. An explicit `openaiResponsesUrl` still takes precedence.
+- Added opt-in `openaiUseAlphaSearch` for standalone OpenAI search, with source limits, recency filtering, allowed-domain filtering, and normal provider fallback. Existing Responses search remains the default. Thanks to [@ZacharyQin](https://github.com/ZacharyQin) for [PR #420](https://github.com/nicobailon/pi-web-access/pull/420).
+- Added `fetch.defaultMode` and `fetch.allowedModes` for choosing the default `fetch_content` mode and disabling unwanted modes. Thanks to [@Slooz](https://github.com/Slooz) for #395.
+- Added `webSearch.allowedProviders` to restrict providers consistently across search, source checks, routing, aggregation, schemas, and Curator. Thanks to [@Slooz](https://github.com/Slooz) for #396.
+- Added an explicit-only Serply Google Search provider with domain filtering, recency filtering, routing, and Curator support. Configure it with `serplyApiKey` or `SERPLY_API_KEY`. Thanks to Serply vendor [@googio](https://github.com/googio) for PR #386.
 
 ### Changed
 
-- Publish a precompiled bundle to improve installed startup performance while keeping TypeScript as the development entry point. Thanks to [@Yisus423](https://github.com/Yisus423) for [issue #418](https://github.com/nicobailon/pi-web-access/issues/418) and [PR #419](https://github.com/nicobailon/pi-web-access/pull/419).
+- Published packages now load a precompiled bundle for faster startup, while source checkouts continue loading TypeScript directly. Thanks to [@Yisus423](https://github.com/Yisus423) for [issue #418](https://github.com/nicobailon/pi-web-access/issues/418) and [PR #419](https://github.com/nicobailon/pi-web-access/pull/419).
+- Fresh installs now use the silent `none` web search workflow by default. Explicit and configured Curator or summary workflows are unchanged. Thanks to [@ducaoya](https://github.com/ducaoya) for issue #416.
 
 ### Fixed
 
-- Default fresh installs to the silent `none` web search workflow while preserving explicit and configured workflow modes. Thanks to [@ducaoya](https://github.com/ducaoya) for issue #416.
 - Preserve legacy `~/.pi/web-search.json` configuration when `~/.pi/agent/web-search.json` is absent in default environments without `XDG_CONFIG_HOME`. Thanks to [@fancyboi999](https://github.com/fancyboi999) for issue #411.
 - List Crawl4AI in the README provider summary and the package description, which both still omitted it after the provider shipped in 0.29.0. Thanks to [@bergheim](https://github.com/bergheim) for [PR #382](https://github.com/nicobailon/pi-web-access/pull/382).
 - Removed the unconditional global `fetch` replacement during extension initialization; proxy transport is now installed lazily when a proxied web-tool operation runs. Thanks to [@AdrianJ20](https://github.com/AdrianJ20) for [issue #388](https://github.com/nicobailon/pi-web-access/issues/388).
