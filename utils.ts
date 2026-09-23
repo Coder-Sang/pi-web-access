@@ -69,8 +69,8 @@ export function resolveApiBaseUrl(options: ApiBaseUrlOptions): string {
 	} catch {
 		throw new Error(`${source} must be an absolute HTTP(S) URL`);
 	}
-	if (url.protocol !== "https:" && (url.protocol !== "http:" || !isLoopbackHostname(url.hostname))) {
-		throw new Error(`${source} must be an absolute HTTPS URL`);
+	if (url.protocol !== "https:" && url.protocol !== "http:") {
+		throw new Error(`${source} must be an absolute HTTP(S) URL`);
 	}
 	if (url.username || url.password) {
 		throw new Error(`${source} must not include credentials`);

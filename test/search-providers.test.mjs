@@ -207,11 +207,11 @@ test("Brave, keyed Exa, and Tavily honor base URL overrides without leaking cred
 	const home = await mkdtemp(join(tmpdir(), "pi-web-access-provider-base-url-"));
 	await writeFile(join(home, "web-search.json"), JSON.stringify({
 		braveApiKey: "brave-config-key",
-		braveBaseUrl: "https://gateway.example.com/brave/res/v1/",
+		braveBaseUrl: "http://gateway.example.com/brave/res/v1/",
 		exaApiKey: "exa-config-key",
-		exaBaseUrl: "https://gateway.example.com/exa/",
+		exaBaseUrl: "http://gateway.example.com/exa/",
 		tavilyApiKey: "tavily-config-key",
-		tavilyBaseUrl: "https://gateway.example.com/tavily/",
+		tavilyBaseUrl: "http://gateway.example.com/tavily/",
 	}) + "\n");
 
 	const child = runChild(`
@@ -227,22 +227,22 @@ test("Brave, keyed Exa, and Tavily honor base URL overrides without leaking cred
 				hasBody: init.body !== undefined,
 				contentType: headers.get("content-type"),
 			});
-			if (target.startsWith("https://gateway.example.com/")) {
+			if (target.startsWith("http://gateway.example.com/")) {
 				return new Response(null, {
 					status: target.includes("/tavily/") ? 302 : 307,
 					headers: { location: target.replace("gateway.example.com", "redirect.example.com") },
 				});
 			}
-			if (target.includes("/brave/res/v1/web/search?")) {
+			if (target.includes("/brave/res/v1/web/search?") || target.startsWith("http://client-gateway/web/search?")) {
 				return new Response(JSON.stringify({ web: { results: [] } }), { status: 200 });
 			}
-			if (target.endsWith("/exa/answer")) {
+			if (target.endsWith("/exa/answer") || target === "http://client-gateway/answer") {
 				return new Response(JSON.stringify({ answer: "answer", citations: [] }), { status: 200 });
 			}
 			if (target.endsWith("/exa/search")) {
 				return new Response(JSON.stringify({ results: [] }), { status: 200 });
 			}
-			if (target.endsWith("/tavily/search")) {
+			if (target.endsWith("/tavily/search") || target === "http://client-gateway/search") {
 				return new Response(JSON.stringify({ answer: "answer", results: [] }), { status: 200 });
 			}
 			throw new Error("Unexpected fetch " + target);
@@ -256,12 +256,34 @@ test("Brave, keyed Exa, and Tavily honor base URL overrides without leaking cred
 		await searchWithExa("search endpoint", { numResults: 2 });
 		await searchWithTavily("configured");
 
-		process.env.BRAVE_BASE_URL = "https://env.example.com/brave/res/v1/";
-		process.env.EXA_BASE_URL = "https://env.example.com/exa/";
-		process.env.TAVILY_BASE_URL = "https://env.example.com/tavily/";
+		process.env.BRAVE_BASE_URL = "http://env.example.com:8080/brave/res/v1/";
+		process.env.EXA_BASE_URL = "http://env.example.com:8080/exa/";
+		process.env.TAVILY_BASE_URL = "http://env.example.com:8080/tavily/";
 		await searchWithBrave("environment");
 		await searchWithExa("environment");
 		await searchWithTavily("environment");
+
+		// Docker/service-discovery hostnames need no dot or explicit port.
+		process.env.BRAVE_BASE_URL = "http://client-gateway";
+		process.env.EXA_BASE_URL = "http://client-gateway";
+		process.env.TAVILY_BASE_URL = "http://client-gateway";
+		await searchWithBrave("short hostname");
+		await searchWithExa("short hostname");
+		await searchWithTavily("short hostname");
+
+		process.env.BRAVE_BASE_URL = "http://10.0.0.1:8080/brave/res/v1";
+		process.env.EXA_BASE_URL = "http://[fd00::1]:8080/exa";
+		process.env.TAVILY_BASE_URL = "http://192.168.1.4:8080/tavily";
+		await searchWithBrave("private IP");
+		await searchWithExa("private IP");
+		await searchWithTavily("private IP");
+
+		process.env.BRAVE_BASE_URL = "https://secure.example.com/brave/res/v1";
+		process.env.EXA_BASE_URL = "https://secure.example.com/exa";
+		process.env.TAVILY_BASE_URL = "https://secure.example.com/tavily";
+		await searchWithBrave("secure");
+		await searchWithExa("secure");
+		await searchWithTavily("secure");
 
 		process.env.BRAVE_BASE_URL = "not-a-url";
 		let invalidError = "";
@@ -270,14 +292,7 @@ test("Brave, keyed Exa, and Tavily honor base URL overrides without leaking cred
 		} catch (error) {
 			invalidError = error.message;
 		}
-		process.env.BRAVE_BASE_URL = "http://gateway.example.com/brave/res/v1";
-		let plaintextError = "";
-		try {
-			await searchWithBrave("plaintext");
-		} catch (error) {
-			plaintextError = error.message;
-		}
-		console.log(JSON.stringify({ calls, invalidError, plaintextError }));
+		console.log(JSON.stringify({ calls, invalidError }));
 	`, {
 		HOME: home,
 		USERPROFILE: home,
@@ -287,23 +302,35 @@ test("Brave, keyed Exa, and Tavily honor base URL overrides without leaking cred
 	assert.equal(child.status, 0, child.stderr);
 	const output = JSON.parse(child.stdout.trim());
 	assert.deepEqual(output.calls.map((call) => call.target), [
-		"https://gateway.example.com/brave/res/v1/web/search?q=configured&count=5",
-		"https://redirect.example.com/brave/res/v1/web/search?q=configured&count=5",
-		"https://gateway.example.com/exa/answer",
-		"https://redirect.example.com/exa/answer",
-		"https://gateway.example.com/exa/search",
-		"https://redirect.example.com/exa/search",
-		"https://gateway.example.com/tavily/search",
-		"https://redirect.example.com/tavily/search",
-		"https://env.example.com/brave/res/v1/web/search?q=environment&count=5",
-		"https://env.example.com/exa/answer",
-		"https://env.example.com/tavily/search",
+		"http://gateway.example.com/brave/res/v1/web/search?q=configured&count=5",
+		"http://redirect.example.com/brave/res/v1/web/search?q=configured&count=5",
+		"http://gateway.example.com/exa/answer",
+		"http://redirect.example.com/exa/answer",
+		"http://gateway.example.com/exa/search",
+		"http://redirect.example.com/exa/search",
+		"http://gateway.example.com/tavily/search",
+		"http://redirect.example.com/tavily/search",
+		"http://env.example.com:8080/brave/res/v1/web/search?q=environment&count=5",
+		"http://env.example.com:8080/exa/answer",
+		"http://env.example.com:8080/tavily/search",
+		"http://client-gateway/web/search?q=short+hostname&count=5",
+		"http://client-gateway/answer",
+		"http://client-gateway/search",
+		"http://10.0.0.1:8080/brave/res/v1/web/search?q=private+IP&count=5",
+		"http://[fd00::1]:8080/exa/answer",
+		"http://192.168.1.4:8080/tavily/search",
+		"https://secure.example.com/brave/res/v1/web/search?q=secure&count=5",
+		"https://secure.example.com/exa/answer",
+		"https://secure.example.com/tavily/search",
 	]);
 	assert.deepEqual(output.calls.map((call) => call.credential), [
 		"brave-config-key", null,
 		"exa-config-key", null,
 		"exa-config-key", null,
 		"Bearer tavily-config-key", null,
+		"brave-config-key", "exa-config-key", "Bearer tavily-config-key",
+		"brave-config-key", "exa-config-key", "Bearer tavily-config-key",
+		"brave-config-key", "exa-config-key", "Bearer tavily-config-key",
 		"brave-config-key", "exa-config-key", "Bearer tavily-config-key",
 	]);
 	assert.ok(output.calls.every((call) => call.redirect === "manual"));
@@ -312,11 +339,10 @@ test("Brave, keyed Exa, and Tavily honor base URL overrides without leaking cred
 		{ method: "GET", hasBody: false, contentType: null },
 	]);
 	assert.match(output.invalidError, /^BRAVE_BASE_URL must be an absolute HTTP\(S\) URL$/);
-	assert.match(output.plaintextError, /^BRAVE_BASE_URL must be an absolute HTTPS URL$/);
 });
 
-test("provider base URLs allow HTTP only on exact loopback hosts", async () => {
-	const home = await mkdtemp(join(tmpdir(), "pi-web-access-loopback-base-url-"));
+test("provider base URLs accept explicitly configured HTTP URLs on hostnames and IPs", async () => {
+	const home = await mkdtemp(join(tmpdir(), "pi-web-access-http-base-url-"));
 	const child = runChild(`
 		const calls = [];
 		globalThis.fetch = async (url, init = {}) => {
@@ -344,6 +370,16 @@ test("provider base URLs allow HTTP only on exact loopback hosts", async () => {
 			"http://127.42.3.4:8080/api",
 			"http://[::1]:8080/api",
 			"http://[0:0:0:0:0:0:0:1]:8080/api",
+			"http://example.com/api",
+			"http://localhost.example/api",
+			"http://internal.gateway:8080/api",
+			"http://client-gateway",
+			"http://foo.localhost/api",
+			"http://10.0.0.1/api",
+			"http://169.254.169.254/api",
+			"http://0.0.0.0/api",
+			"http://[::]/api",
+			"http://[::ffff:127.0.0.1]/api",
 			"https://gateway.example.com/api",
 		];
 		for (const [index, baseUrl] of accepted.entries()) {
@@ -351,28 +387,9 @@ test("provider base URLs allow HTTP only on exact loopback hosts", async () => {
 			await searchWithBrave("accepted-" + index);
 		}
 
-		const rejected = [
-			"http://example.com/api",
-			"http://localhost.example/api",
-			"http://foo.localhost/api",
-			"http://10.0.0.1/api",
-			"http://169.254.169.254/api",
-			"http://0.0.0.0/api",
-			"http://[::]/api",
-			"http://[::ffff:127.0.0.1]/api",
-		];
-		const rejectedErrors = [];
-		for (const baseUrl of rejected) {
-			process.env.BRAVE_BASE_URL = baseUrl;
-			try {
-				await searchWithBrave("rejected");
-				rejectedErrors.push(null);
-			} catch (error) {
-				rejectedErrors.push(error.message);
-			}
-		}
-
 		const invalid = [
+			"ftp://example.com/api",
+			"http://",
 			"http://user:secret@localhost:8080/api",
 			"http://localhost:8080/api?debug=true",
 			"http://localhost:8080/api#fragment",
@@ -387,7 +404,7 @@ test("provider base URLs allow HTTP only on exact loopback hosts", async () => {
 				invalidErrors.push(error.message);
 			}
 		}
-		console.log(JSON.stringify({ calls, rejectedErrors, invalidErrors }));
+		console.log(JSON.stringify({ calls, invalidErrors }));
 	`, {
 		HOME: home,
 		USERPROFILE: home,
@@ -400,10 +417,12 @@ test("provider base URLs allow HTTP only on exact loopback hosts", async () => {
 		{ target: "http://localhost:8080/api/web/search?q=redirect&count=5", credential: "brave-loopback-key" },
 		{ target: "https://remote.example.com/redirected", credential: null },
 	]);
-	assert.equal(output.calls.length, 10);
+	assert.equal(output.calls.length, 20);
 	assert.ok(output.calls.slice(2).every((call) => call.credential === "brave-loopback-key"));
-	assert.deepEqual(output.rejectedErrors, Array(8).fill("BRAVE_BASE_URL must be an absolute HTTPS URL"));
+	assert.ok(output.calls.some((call) => call.target.startsWith("http://10.0.0.1/api/web/search?")));
 	assert.deepEqual(output.invalidErrors, [
+		"BRAVE_BASE_URL must be an absolute HTTP(S) URL",
+		"BRAVE_BASE_URL must be an absolute HTTP(S) URL",
 		"BRAVE_BASE_URL must not include credentials",
 		"BRAVE_BASE_URL must not include query parameters or fragments",
 		"BRAVE_BASE_URL must not include query parameters or fragments",

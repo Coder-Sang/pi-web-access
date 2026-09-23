@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Allow explicitly configured Brave, Exa, and Tavily API base URLs to use HTTP on any address, including single-label hostnames and non-loopback IPs. HTTPS remains the default; plaintext HTTP is opt-in and exposes API credentials to the network.
+
 ## [0.31.0] - 2026-09-22
 
 ### Highlights
