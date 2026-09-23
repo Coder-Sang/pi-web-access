@@ -4,11 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-09-22
+
+### Highlights
+
+- Start fresh sessions with a smaller web-tool list, then enable the tools when you need them.
+- Keep long search responses manageable without losing access to the full results.
+- Search with Baizhi MCP when you explicitly configure it.
+- Connect Brave, Exa, and Tavily to local HTTP services on loopback addresses.
+
 ### Added
 
-- Bounded raw `web_search` output while preserving full, pageable stored results and disclosing the providers used. Thanks to [@theSprog](https://github.com/theSprog) for [issue #423](https://github.com/nicobailon/pi-web-access/issues/423).
-- Added lazy web-tool activation so supported fresh sessions begin with a compact `web_enable` loader and expose configured web schemas only after activation. Thanks to [@Knimoms](https://github.com/Knimoms) for [PR #424](https://github.com/nicobailon/pi-web-access/pull/424).
-- Added an explicit-only Baizhi MCP search provider with credential-safe session handling, routing, and Curator support. Thanks to [@ct-jaryn](https://github.com/ct-jaryn) for [PR #422](https://github.com/nicobailon/pi-web-access/pull/422).
+- Fresh sessions now show `web_enable` instead of the full web-tool list when supported. Call it to make your configured web tools available. Thanks to [@Knimoms](https://github.com/Knimoms) for [PR #424](https://github.com/nicobailon/pi-web-access/pull/424).
+- Added Baizhi MCP as an optional search provider, with search routing and Curator support. It is used only when explicitly selected. Thanks to [@ct-jaryn](https://github.com/ct-jaryn) for [PR #422](https://github.com/nicobailon/pi-web-access/pull/422).
+
+### Changed
+
+- Long `web_search` responses now show a shorter result and the providers used. Full results remain available through `get_search_content`. Thanks to [@theSprog](https://github.com/theSprog) for [issue #423](https://github.com/nicobailon/pi-web-access/issues/423).
+
+### Fixed
+
+- Allow explicitly configured Brave, Exa, and Tavily API base URLs to use HTTP on true loopback hosts while continuing to require HTTPS remotely. Thanks to [@aaschmid](https://github.com/aaschmid) for [issue #421](https://github.com/nicobailon/pi-web-access/issues/421).
 
 ## [0.30.0] - 2026-09-19
 
@@ -35,7 +51,6 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Allow explicitly configured Brave, Exa, and Tavily API base URLs to use HTTP on true loopback hosts while continuing to require HTTPS remotely. Thanks to [@aaschmid](https://github.com/aaschmid) for [issue #421](https://github.com/nicobailon/pi-web-access/issues/421).
 - Preserve legacy `~/.pi/web-search.json` configuration when `~/.pi/agent/web-search.json` is absent in default environments without `XDG_CONFIG_HOME`. Thanks to [@fancyboi999](https://github.com/fancyboi999) for issue #411.
 - List Crawl4AI in the README provider summary and the package description, which both still omitted it after the provider shipped in 0.29.0. Thanks to [@bergheim](https://github.com/bergheim) for [PR #382](https://github.com/nicobailon/pi-web-access/pull/382).
 - Removed the unconditional global `fetch` replacement during extension initialization; proxy transport is now installed lazily when a proxied web-tool operation runs. Thanks to [@AdrianJ20](https://github.com/AdrianJ20) for [issue #388](https://github.com/nicobailon/pi-web-access/issues/388).
